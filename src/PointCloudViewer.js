@@ -26,7 +26,7 @@ const PointCloudViewer = () => {
     light.position.set(5, 5, 5).normalize();
     scene.add(light);
 
-    // Load PCD file
+    // Load the PCD file
     const loader = new PCDLoader();
     loader.load(
       `${process.env.PUBLIC_URL}/sample_pcd_data/bunny.pcd`,
