@@ -1,3 +1,5 @@
+// src/PointCloudViewer.js
+
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { PCDLoader } from 'three/examples/jsm/loaders/PCDLoader';
@@ -11,10 +13,10 @@ const PointCloudViewer = () => {
 
     // Scene, camera, renderer
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(75, mount.clientWidth / mount.clientHeight, 0.1, 1000);
     camera.position.set(0, 0, 5);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(mount.clientWidth, mount.clientHeight);
     mount.appendChild(renderer.domElement);
 
     // OrbitControls
@@ -29,14 +31,14 @@ const PointCloudViewer = () => {
     // Load PCD file
     const loader = new PCDLoader();
     loader.load(
-      `${process.env.PUBLIC_URL}/sample_pcd_data/bunny.pcd`,
+      `${process.env.PUBLIC_URL}/sample_pcd/p213.pcd`,
       (points) => {
         scene.add(points);
         animate();
       },
       undefined,
       (error) => {
-        console.error(error);
+        console.error('Error loading PCD file:', error);
       }
     );
 
@@ -49,9 +51,9 @@ const PointCloudViewer = () => {
 
     // Handle window resize
     const handleResize = () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.aspect = mount.clientWidth / mount.clientHeight;
       camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setSize(mount.clientWidth, mount.clientHeight);
     };
 
     window.addEventListener('resize', handleResize);
@@ -63,7 +65,7 @@ const PointCloudViewer = () => {
     };
   }, []);
 
-  return <div ref={mountRef} />;
+  return <div ref={mountRef} style={{ width: '100%', height: '100%' }} />;
 };
 
 export default PointCloudViewer;
