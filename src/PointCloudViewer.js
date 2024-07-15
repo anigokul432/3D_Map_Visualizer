@@ -29,7 +29,7 @@ const PointCloudViewer = () => {
     // Load PCD file
     const loader = new PCDLoader();
     loader.load(
-      `${process.env.PUBLIC_URL}/sample_pcd_data/p213.pcd`,
+      `${process.env.PUBLIC_URL}/sample_pcd_data/bunny.pcd`,
       (points) => {
         scene.add(points);
         animate();
