@@ -9,12 +9,19 @@
   align-items: center;
   justify-content: center;
   font-size: calc(10px + 2vmin);
+  position: relative; /* Added for dropdown positioning */
 }
 
 .App-header {
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+.dropdown-container {
+  position: absolute;
+  top: 20px;
+  right: 20px;
 }
 
 h1 {

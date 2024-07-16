@@ -1,0 +1,23 @@
+/* src/Toolbar.css */
+
+.toolbar {
+    position: absolute;
+    top: 10px; /* Space between the toolbar and the top of the canvas */
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px; /* Space between buttons */
+    background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent background */
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Drop shadow */
+}
+
+.toolbar-button {
+    width: 40px; /* Square buttons */
+    height: 40px;
+    background-color: #61dafb; /* React blue color */
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
