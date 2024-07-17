@@ -9,7 +9,7 @@
   align-items: center;
   justify-content: center;
   font-size: calc(10px + 2vmin);
-  position: relative; /* Added for dropdown positioning */
+  position: relative; /* Added for dropdown positioningg */
 }
 
 .App-header {
