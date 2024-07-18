@@ -1,12 +1,14 @@
 // src/PointCloudViewer.js
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { PCDLoader } from 'three/examples/jsm/loaders/PCDLoader';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
-const PointCloudViewer = ({ view }) => {
+const PointCloudViewer = ({ view, isAnnotationActive }) => {
   const mountRef = useRef(null);
+  const controlsRef = useRef(null);
+  const [cameraState, setCameraState] = useState(null);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -14,32 +16,13 @@ const PointCloudViewer = ({ view }) => {
     // Scene, camera, renderer
     const scene = new THREE.Scene();
     let camera;
+    const aspect = mount.clientWidth / mount.clientHeight;
+
     if (view === 'Free') {
-      camera = new THREE.PerspectiveCamera(75, mount.clientWidth / mount.clientHeight, 0.1, 1000);
+      camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
       camera.position.set(0, 0, 5);
     } else {
-      const aspect = mount.clientWidth / mount.clientHeight;
-      camera = new THREE.OrthographicCamera(
-        -aspect * 10,
-        aspect * 10,
-        10,
-        -10,
-        0.1,
-        1000
-      );
-      switch (view) {
-        case 'XY':
-          camera.position.set(0, 0, 10);
-          break;
-        case 'XZ':
-          camera.position.set(0, 10, 0);
-          break;
-        case 'YZ':
-          camera.position.set(10, 0, 0);
-          break;
-        default:
-          break;
-      }
+      camera = new THREE.OrthographicCamera(-aspect * 10, aspect * 10, 10, -10, 0.1, 1000);
     }
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -49,8 +32,23 @@ const PointCloudViewer = ({ view }) => {
     // Controls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    if (view !== 'Free') {
+    controlsRef.current = controls;
+
+    if (cameraState) {
+      camera.position.copy(cameraState.position);
+      camera.rotation.copy(cameraState.rotation);
+      if (camera.isOrthographicCamera) {
+        camera.zoom = cameraState.zoom;
+        camera.updateProjectionMatrix();
+      }
+    }
+
+    if (view !== 'Free' || isAnnotationActive) {
       controls.enableRotate = false;
+    }
+    if (isAnnotationActive) {
+      controls.enablePan = false;
+      controls.enableZoom = false;
     }
 
     // Add light
@@ -101,6 +99,56 @@ const PointCloudViewer = ({ view }) => {
       window.removeEventListener('resize', handleResize);
       mount.removeChild(renderer.domElement);
     };
+  }, [view]);
+
+  useEffect(() => {
+    const camera = controlsRef.current.object;
+    if (isAnnotationActive) {
+      setCameraState({
+        position: camera.position.clone(),
+        rotation: camera.rotation.clone(),
+        zoom: camera.zoom,
+      });
+      controlsRef.current.enableRotate = false;
+      controlsRef.current.enablePan = false;
+      controlsRef.current.enableZoom = false;
+    } else if (cameraState) {
+      camera.position.copy(cameraState.position);
+      camera.rotation.copy(cameraState.rotation);
+      if (camera.isOrthographicCamera) {
+        camera.zoom = cameraState.zoom;
+        camera.updateProjectionMatrix();
+      }
+      controlsRef.current.enableRotate = true;
+      controlsRef.current.enablePan = true;
+      controlsRef.current.enableZoom = true;
+    }
+  }, [isAnnotationActive]);
+
+  useEffect(() => {
+    const camera = controlsRef.current.object;
+
+    if (view !== 'Free') {
+      switch (view) {
+        case 'XY':
+          camera.position.set(0, 0, 10);
+          camera.lookAt(0, 0, 0);
+          break;
+        case 'XZ':
+          camera.position.set(0, 10, 0);
+          camera.lookAt(0, 0, 0);
+          break;
+        case 'YZ':
+          camera.position.set(10, 0, 0);
+          camera.lookAt(0, 0, 0);
+          break;
+        default:
+          break;
+      }
+      if (camera.isOrthographicCamera) {
+        camera.updateProjectionMatrix();
+      }
+    }
   }, [view]);
 
   return <div ref={mountRef} style={{ width: '100%', height: '100%' }} />;

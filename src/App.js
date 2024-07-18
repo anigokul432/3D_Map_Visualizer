@@ -3,13 +3,24 @@
 import React, { useState } from 'react';
 import './App.css';
 import PointCloudViewer from './PointCloudViewer';
+import AnnotationTool from './AnnotationTool';
 
 function App() {
   const [view, setView] = useState('Free');
+  const [isAnnotationActive, setIsAnnotationActive] = useState(false);
 
   const handleViewChange = (event) => {
     setView(event.target.value);
+    if (event.target.value !== 'Free') {
+      setIsAnnotationActive(false); // Deactivate annotation mode if not in Free view
+    }
   };
+
+  const handleToggleAnnotation = (isActive) => {
+    setIsAnnotationActive(isActive);
+  };
+
+  const canActivateAnnotation = view === 'Free';
 
   return (
     <div className="App">
@@ -24,8 +35,9 @@ function App() {
               <option value="XZ">Top-Down</option>
               <option value="YZ">Side</option>
             </select>
+            <AnnotationTool onToggleAnnotation={handleToggleAnnotation} canActivate={canActivateAnnotation} />
           </div>
-          <PointCloudViewer view={view} />
+          <PointCloudViewer view={view} isAnnotationActive={isAnnotationActive} />
         </div>
       </header>
     </div>
