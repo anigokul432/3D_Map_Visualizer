@@ -1,0 +1,10 @@
+.annotation {
+    position: absolute;
+    width: 100px;
+    height: 50px;
+    background-color: white;
+    border: 2px solid rgb(132, 132, 132);
+    border-radius: 15px 15px 15px 0px;
+    transform: translate(50%, 0%); /* Adjust to position bottom-left */
+  }
+  

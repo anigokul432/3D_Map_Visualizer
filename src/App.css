@@ -9,7 +9,7 @@
   align-items: center;
   justify-content: center;
   font-size: calc(10px + 2vmin);
-  position: relative; /* Added for dropdown positioningg */
+  position: relative; /* Added for dropdown positioning */
 }
 
 .App-header {
@@ -26,11 +26,12 @@ h1 {
 .canvas-container {
   position: relative; /* Ensure relative positioning for internal absolute elements */
   width: 90vw; /* 90% of the viewport width */
-  height: 85vh; /* 80% of the viewport height */
+  height: 85vh; /* 85% of the viewport height */
   margin-top: 10px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Drop shadow */
   background-color: #fff; /* White background for the canvas */
-  border-radius: 8px; /* Optional: rounded cornerss */
+  border-radius: 8px; /* Optional: rounded corners */
+  overflow: hidden; /* To ensure annotations don't overflow */
 }
 
 .tools-container {
@@ -43,6 +44,7 @@ h1 {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Slight shadow for better visibility */
   display: flex;
   align-items: center;
+  z-index: 10; /* Ensure tools container is above canvas */
 }
 
 label {
@@ -64,4 +66,33 @@ select:focus {
   outline: none;
   border-color: #007bff;
   box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}
+
+.annotate-button {
+  font-size: 0.8em; /* Smaller font size for the button */
+  padding: 5px 10px;
+  margin-left: 10px; /* Space between dropdown and button */
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.annotate-button.active {
+  background-color: #007bff;
+  color: #fff;
+  border-color: #007bff;
+}
+
+.annotate-button:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}
+
+.annotate-button.disabled {
+  color: gray;
+  cursor: not-allowed;
 }

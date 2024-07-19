@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { PCDLoader } from 'three/examples/jsm/loaders/PCDLoader';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import './PointCloudViewer.css'; // Import the CSS file
 
 const PointCloudViewer = ({ view, isAnnotationActive }) => {
   const mountRef = useRef(null);
@@ -19,15 +20,9 @@ const PointCloudViewer = ({ view, isAnnotationActive }) => {
     // Scene, camera, renderer
     const scene = new THREE.Scene();
     setScene(scene);
-    let camera;
     const aspect = mount.clientWidth / mount.clientHeight;
-
-    if (view === 'Free') {
-      camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
-      camera.position.set(0, 0, 5);
-    } else {
-      camera = new THREE.OrthographicCamera(-aspect * 10, aspect * 10, 10, -10, 0.1, 1000);
-    }
+    const camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
+    camera.position.set(0, 0, 5);
     setCamera(camera);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -38,23 +33,6 @@ const PointCloudViewer = ({ view, isAnnotationActive }) => {
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controlsRef.current = controls;
-
-    if (cameraState) {
-      camera.position.copy(cameraState.position);
-      camera.rotation.copy(cameraState.rotation);
-      if (camera.isOrthographicCamera) {
-        camera.zoom = cameraState.zoom;
-        camera.updateProjectionMatrix();
-      }
-    }
-
-    if (view !== 'Free' || isAnnotationActive) {
-      controls.enableRotate = false;
-    }
-    if (isAnnotationActive) {
-      controls.enablePan = false;
-      controls.enableZoom = false;
-    }
 
     // Add light
     const light = new THREE.DirectionalLight(0xffffff, 1);
@@ -80,19 +58,13 @@ const PointCloudViewer = ({ view, isAnnotationActive }) => {
       requestAnimationFrame(animate);
       controls.update();
       renderer.render(scene, camera);
+      updateAnnotationsPosition();
     };
 
     // Handle window resize
     const handleResize = () => {
       const aspect = mount.clientWidth / mount.clientHeight;
-      if (camera.isPerspectiveCamera) {
-        camera.aspect = aspect;
-      } else {
-        camera.left = -aspect * 10;
-        camera.right = aspect * 10;
-        camera.top = 10;
-        camera.bottom = -10;
-      }
+      camera.aspect = aspect;
       camera.updateProjectionMatrix();
       renderer.setSize(mount.clientWidth, mount.clientHeight);
     };
@@ -104,6 +76,50 @@ const PointCloudViewer = ({ view, isAnnotationActive }) => {
       window.removeEventListener('resize', handleResize);
       mount.removeChild(renderer.domElement);
     };
+  }, []);
+
+  useEffect(() => {
+    const camera = controlsRef.current.object;
+
+    switch (view) {
+      case 'Free':
+        camera.fov = 75;
+        camera.position.set(0, 0, 5);
+        camera.lookAt(0, 0, 0);
+        controlsRef.current.enableRotate = true;
+        controlsRef.current.enablePan = true;
+        controlsRef.current.enableZoom = true;
+        break;
+      case 'XY':
+        camera.fov = 1;
+        camera.position.set(0, 0, 200);
+        camera.lookAt(0, 0, 0);
+        controlsRef.current.enableRotate = false;
+        controlsRef.current.enablePan = true;
+        controlsRef.current.enableZoom = true;
+        break;
+      case 'XZ':
+        camera.fov = 1;
+        camera.position.set(0, 200, 0);
+        camera.lookAt(0, 0, 0);
+        controlsRef.current.enableRotate = false;
+        controlsRef.current.enablePan = true;
+        controlsRef.current.enableZoom = true;
+        break;
+      case 'YZ':
+        camera.fov = 1;
+        camera.position.set(200, 0, 0);
+        camera.lookAt(0, 0, 0);
+        controlsRef.current.enableRotate = false;
+        controlsRef.current.enablePan = true;
+        controlsRef.current.enableZoom = true;
+        break;
+      default:
+        break;
+    }
+
+    camera.updateProjectionMatrix();
+    updateAnnotationsPosition();
   }, [view]);
 
   useEffect(() => {
@@ -131,36 +147,17 @@ const PointCloudViewer = ({ view, isAnnotationActive }) => {
   }, [isAnnotationActive]);
 
   useEffect(() => {
-    const camera = controlsRef.current.object;
+    const handleUpdate = () => {
+      updateAnnotationsPosition();
+    };
 
-    if (view !== 'Free') {
-      switch (view) {
-        case 'XY':
-          camera.position.set(0, 0, 10);
-          camera.lookAt(0, 0, 0);
-          break;
-        case 'XZ':
-          camera.position.set(0, 10, 0);
-          camera.lookAt(0, 0, 0);
-          break;
-        case 'YZ':
-          camera.position.set(10, 0, 0);
-          camera.lookAt(0, 0, 0);
-          break;
-        default:
-          break;
-      }
-      if (camera.isOrthographicCamera) {
-        camera.updateProjectionMatrix();
-      }
-    }
+    // Update annotations position on controls update
+    controlsRef.current.addEventListener('change', handleUpdate);
 
-    // Add existing annotations to the new scene
-    annotations.forEach((annotation) => {
-      scene.add(annotation);
-    });
-
-  }, [view, annotations, scene]);
+    return () => {
+      controlsRef.current.removeEventListener('change', handleUpdate);
+    };
+  }, [annotations]);
 
   const handleMouseClick = (event) => {
     if (!isAnnotationActive || !camera || !scene) return;
@@ -178,15 +175,17 @@ const PointCloudViewer = ({ view, isAnnotationActive }) => {
     if (points) {
       const intersect = getClosestPoint(raycaster, points, 0.1); // Increased radius to 0.1
       if (intersect) {
-        console.log(intersect.point);
+        console.log('Intersection point:', intersect.point);
 
-        const sphereGeometry = new THREE.SphereGeometry(0.1, 32, 32);
-        const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-        const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-        sphere.position.copy(intersect.point);
-        scene.add(sphere);
+        const annotation = {
+          point: intersect.point
+        };
 
-        setAnnotations([...annotations, sphere]); // Store annotation
+        setAnnotations((prevAnnotations) => {
+          const newAnnotations = [...prevAnnotations, annotation];
+          setTimeout(() => updateAnnotationsPosition(newAnnotations), 0); // Update positions immediately after state update
+          return newAnnotations;
+        }); // Store annotation
       }
     }
   };
@@ -217,6 +216,33 @@ const PointCloudViewer = ({ view, isAnnotationActive }) => {
     }
   };
 
+  const updateAnnotationsPosition = (annotationsToUpdate = annotations) => {
+    annotationsToUpdate.forEach((annotation, index) => {
+      const vector = new THREE.Vector3(annotation.point.x, annotation.point.y, annotation.point.z);
+      vector.project(camera);
+
+      const x = (vector.x * 0.5 + 0.5) * mountRef.current.clientWidth;
+      const y = (vector.y * -0.5 + 0.5) * mountRef.current.clientHeight;
+
+      const element = document.getElementById(`annotation-${index}`);
+      if (element) {
+        if (view !== 'Free') {
+          element.style.display = 'none';
+        } else if (
+          vector.x >= -1 && vector.x <= 1 &&
+          vector.y >= -1 && vector.y <= 1 &&
+          vector.z >= -1 && vector.z <= 1
+        ) {
+          element.style.display = 'block';
+          element.style.left = `${x - 50}px`; // Adjust to position bottom-left
+          element.style.top = `${y - 50}px`;  // Adjust to position bottom-left
+        } else {
+          element.style.display = 'none';
+        }
+      }
+    });
+  };
+
   useEffect(() => {
     if (isAnnotationActive) {
       mountRef.current.addEventListener('click', handleMouseClick);
@@ -229,7 +255,17 @@ const PointCloudViewer = ({ view, isAnnotationActive }) => {
     };
   }, [isAnnotationActive, annotations]);
 
-  return <div ref={mountRef} style={{ width: '100%', height: '100%' }} />;
+  return (
+    <div ref={mountRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
+      {annotations.map((annotation, index) => (
+        <div
+          key={index}
+          id={`annotation-${index}`}
+          className="annotation"
+        />
+      ))}
+    </div>
+  );
 };
 
 export default PointCloudViewer;
