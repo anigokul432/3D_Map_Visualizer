@@ -6,13 +6,14 @@ import { PCDLoader } from 'three/examples/jsm/loaders/PCDLoader';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import './PointCloudViewer.css'; // Import the CSS file
 
-const PointCloudViewer = ({ view, isAnnotationActive }) => {
+const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive }) => {
   const mountRef = useRef(null);
   const controlsRef = useRef(null);
   const [cameraState, setCameraState] = useState(null);
   const [scene, setScene] = useState(null);
   const [camera, setCamera] = useState(null);
   const [annotations, setAnnotations] = useState([]);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -119,7 +120,6 @@ const PointCloudViewer = ({ view, isAnnotationActive }) => {
     }
 
     camera.updateProjectionMatrix();
-    updateAnnotationsPosition();
   }, [view]);
 
   useEffect(() => {
@@ -160,7 +160,7 @@ const PointCloudViewer = ({ view, isAnnotationActive }) => {
   }, [annotations]);
 
   const handleMouseClick = (event) => {
-    if (!isAnnotationActive || !camera || !scene) return;
+    if (!isAnnotationActive || isEditing || !camera || !scene) return;
 
     const rect = mountRef.current.getBoundingClientRect();
     const mouse = new THREE.Vector2(
@@ -178,7 +178,9 @@ const PointCloudViewer = ({ view, isAnnotationActive }) => {
         console.log('Intersection point:', intersect.point);
 
         const annotation = {
-          point: intersect.point
+          point: intersect.point,
+          text: '',
+          isEditing: true,
         };
 
         setAnnotations((prevAnnotations) => {
@@ -186,6 +188,7 @@ const PointCloudViewer = ({ view, isAnnotationActive }) => {
           setTimeout(() => updateAnnotationsPosition(newAnnotations), 0); // Update positions immediately after state update
           return newAnnotations;
         }); // Store annotation
+        setIsEditing(true);
       }
     }
   };
@@ -216,6 +219,37 @@ const PointCloudViewer = ({ view, isAnnotationActive }) => {
     }
   };
 
+  const handleSave = (index, event) => {
+    event.stopPropagation(); // Stop the event from propagating to the canvas
+    setAnnotations((prevAnnotations) =>
+      prevAnnotations.map((annotation, i) =>
+        i === index ? { ...annotation, isEditing: false } : annotation
+      )
+    );
+    setIsEditing(false);
+    setIsAnnotationActive(false); // Exit annotation mode
+    setTimeout(() => updateAnnotationsPosition(), 0); // Update positions immediately after state update
+  };
+
+  const handleEdit = (index, event) => {
+    event.stopPropagation(); // Stop the event from propagating to the canvas
+    setAnnotations((prevAnnotations) =>
+      prevAnnotations.map((annotation, i) =>
+        i === index ? { ...annotation, isEditing: true } : annotation
+      )
+    );
+    setIsEditing(true);
+    setTimeout(() => updateAnnotationsPosition(), 0); // Update positions immediately after state update
+  };
+
+  const handleTextChange = (index, text) => {
+    setAnnotations((prevAnnotations) =>
+      prevAnnotations.map((annotation, i) =>
+        i === index ? { ...annotation, text } : annotation
+      )
+    );
+  };
+
   const updateAnnotationsPosition = (annotationsToUpdate = annotations) => {
     annotationsToUpdate.forEach((annotation, index) => {
       const vector = new THREE.Vector3(annotation.point.x, annotation.point.y, annotation.point.z);
@@ -226,6 +260,7 @@ const PointCloudViewer = ({ view, isAnnotationActive }) => {
 
       const element = document.getElementById(`annotation-${index}`);
       if (element) {
+        const height = element.getBoundingClientRect().height;
         if (view !== 'Free') {
           element.style.display = 'none';
         } else if (
@@ -235,7 +270,7 @@ const PointCloudViewer = ({ view, isAnnotationActive }) => {
         ) {
           element.style.display = 'block';
           element.style.left = `${x - 50}px`; // Adjust to position bottom-left
-          element.style.top = `${y - 50}px`;  // Adjust to position bottom-left
+          element.style.top = `${y - height}px`;  // Adjust to position bottom-left based on height
         } else {
           element.style.display = 'none';
         }
@@ -253,16 +288,31 @@ const PointCloudViewer = ({ view, isAnnotationActive }) => {
     return () => {
       mountRef.current.removeEventListener('click', handleMouseClick);
     };
-  }, [isAnnotationActive, annotations]);
+  }, [isAnnotationActive, isEditing, annotations]);
 
   return (
     <div ref={mountRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
-      {annotations.map((annotation, index) => (
+      {view === 'Free' && annotations.map((annotation, index) => (
         <div
           key={index}
           id={`annotation-${index}`}
           className="annotation"
-        />
+        >
+          {annotation.isEditing ? (
+            <>
+              <textarea
+                value={annotation.text}
+                onChange={(e) => handleTextChange(index, e.target.value)}
+              />
+              <button onClick={(e) => handleSave(index, e)}>Save</button>
+            </>
+          ) : (
+            <>
+              <p>{annotation.text}</p>
+              <button onClick={(e) => handleEdit(index, e)}>Edit</button>
+            </>
+          )}
+        </div>
       ))}
     </div>
   );

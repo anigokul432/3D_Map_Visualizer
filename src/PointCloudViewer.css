@@ -1,10 +1,35 @@
 .annotation {
-    position: absolute;
-    width: 100px;
-    height: 50px;
-    background-color: white;
-    border: 2px solid rgb(132, 132, 132);
-    border-radius: 15px 15px 15px 0px;
-    transform: translate(50%, 0%); /* Adjust to position bottom-left */
-  }
-  
+  position: absolute;
+  width: 100px;
+  background-color: white;
+  border-radius: 15px 15px 15px 0px;
+  box-shadow: 0 0px 8px rgba(0, 0, 0, 0.15); /* Drop shadow */
+  padding: 5px;
+  transform: translate(45%, 0%); /* Adjust to position bottom-left */
+  overflow: hidden; /* Ensure text is contained within the element */
+}
+
+.annotation textarea,
+.annotation p {
+  width: calc(100% - 12px);
+  font-size: 14px; /* Ensure the same font size for input and text */
+  margin-bottom: 5px;
+  word-wrap: break-word; /* Break words that are too long */
+  white-space: pre-wrap; /* Preserve whitespace and wraps long words */
+  resize: none; /* Disable manual resizing */
+  height: auto; /* Ensure it grows based on content */
+  overflow: hidden; /* Hide overflow content */
+}
+
+.annotation textarea {
+  min-height: 20px; /* Minimum height for the textarea */
+}
+
+.annotation button {
+  display: block;
+  width: 100%;
+}
+
+.annotation p {
+  margin: 0; /* Remove default margin */
+}

@@ -35,9 +35,9 @@ function App() {
               <option value="XZ">Top-Down</option>
               <option value="YZ">Side</option>
             </select>
-            <AnnotationTool onToggleAnnotation={handleToggleAnnotation} canActivate={canActivateAnnotation} />
+            <AnnotationTool onToggleAnnotation={handleToggleAnnotation} canActivate={canActivateAnnotation} isAnnotationActive={isAnnotationActive} />
           </div>
-          <PointCloudViewer view={view} isAnnotationActive={isAnnotationActive} />
+          <PointCloudViewer view={view} isAnnotationActive={isAnnotationActive} setIsAnnotationActive={setIsAnnotationActive} />
         </div>
       </header>
     </div>
