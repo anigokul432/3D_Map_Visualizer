@@ -8,6 +8,7 @@ import AnnotationTool from './AnnotationTool';
 function App() {
   const [view, setView] = useState('Free');
   const [isAnnotationActive, setIsAnnotationActive] = useState(false);
+  const [annotations, setAnnotations] = useState([]);
 
   const handleViewChange = (event) => {
     setView(event.target.value);
@@ -18,6 +19,21 @@ function App() {
 
   const handleToggleAnnotation = (isActive) => {
     setIsAnnotationActive(isActive);
+  };
+
+  const handleGenerateReport = () => {
+    const reportContent = annotations
+      .map(
+        (annotation) =>
+          `Location: (${annotation.point.x.toFixed(2)}, ${annotation.point.y.toFixed(2)}, ${annotation.point.z.toFixed(2)})\nComment: ${annotation.text}\n`
+      )
+      .join('\n');
+
+    const blob = new Blob([reportContent], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'annotations_report.txt';
+    link.click();
   };
 
   const canActivateAnnotation = view === 'Free';
@@ -35,9 +51,22 @@ function App() {
               <option value="XZ">Top-Down</option>
               <option value="YZ">Side</option>
             </select>
-            <AnnotationTool onToggleAnnotation={handleToggleAnnotation} canActivate={canActivateAnnotation} isAnnotationActive={isAnnotationActive} />
+            <AnnotationTool
+              onToggleAnnotation={handleToggleAnnotation}
+              canActivate={canActivateAnnotation}
+              isAnnotationActive={isAnnotationActive}
+            />
+            <button className="generate-report-button" onClick={handleGenerateReport}>
+              Generate Report
+            </button>
           </div>
-          <PointCloudViewer view={view} isAnnotationActive={isAnnotationActive} setIsAnnotationActive={setIsAnnotationActive} />
+          <PointCloudViewer
+            view={view}
+            isAnnotationActive={isAnnotationActive}
+            setIsAnnotationActive={setIsAnnotationActive}
+            annotations={annotations}
+            setAnnotations={setAnnotations}
+          />
         </div>
       </header>
     </div>

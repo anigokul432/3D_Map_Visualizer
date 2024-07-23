@@ -6,13 +6,12 @@ import { PCDLoader } from 'three/examples/jsm/loaders/PCDLoader';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import './PointCloudViewer.css'; // Import the CSS file
 
-const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive }) => {
+const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, annotations, setAnnotations }) => {
   const mountRef = useRef(null);
   const controlsRef = useRef(null);
   const [cameraState, setCameraState] = useState(null);
   const [scene, setScene] = useState(null);
   const [camera, setCamera] = useState(null);
-  const [annotations, setAnnotations] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
@@ -86,6 +85,7 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive }) =
       case 'Free':
         camera.fov = 75;
         camera.position.set(0, 0, 5);
+        camera.up.set(0, 1, 0); // Ensure default up direction
         camera.lookAt(0, 0, 0);
         controlsRef.current.enableRotate = true;
         controlsRef.current.enablePan = true;
@@ -94,6 +94,7 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive }) =
       case 'XY':
         camera.fov = 1;
         camera.position.set(0, 0, 200);
+        camera.up.set(0, 1, 0); // Ensure default up direction
         camera.lookAt(0, 0, 0);
         controlsRef.current.enableRotate = false;
         controlsRef.current.enablePan = true;
@@ -102,6 +103,7 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive }) =
       case 'XZ':
         camera.fov = 1;
         camera.position.set(0, 200, 0);
+        camera.up.set(1, 0, 0); // Set up direction to +x
         camera.lookAt(0, 0, 0);
         controlsRef.current.enableRotate = false;
         controlsRef.current.enablePan = true;
@@ -110,6 +112,7 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive }) =
       case 'YZ':
         camera.fov = 1;
         camera.position.set(200, 0, 0);
+        camera.up.set(0, 1, 0); // Ensure default up direction
         camera.lookAt(0, 0, 0);
         controlsRef.current.enableRotate = false;
         controlsRef.current.enablePan = true;
