@@ -21,3 +21,6 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Ignore the output file
+/public/assets/infy_campus_v6.pcd
