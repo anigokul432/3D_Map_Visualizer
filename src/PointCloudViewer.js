@@ -39,19 +39,44 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
     light.position.set(5, 5, 5).normalize();
     scene.add(light);
 
-    // Load PCD file
+    // Add AxesHelper to visualize the three axes
+    const axesHelper = new THREE.AxesHelper(5); // Size of the axes helper
+    scene.add(axesHelper);
+
+    // Load PCD files
     const loader = new PCDLoader();
-    loader.load(
-      `${process.env.PUBLIC_URL}/sample_pcd/bunny.pcd`,
-      (points) => {
-        scene.add(points);
+
+    const loadPointCloud = (url, onLoad) => {
+      loader.load(
+        url,
+        (points) => {
+          // Apply the specified transformations to the point cloud
+          points.rotateX(-1.65);
+          points.rotateY(0.125);
+          points.translateZ(50);
+          scene.add(points);
+          onLoad();
+        },
+        undefined,
+        (error) => {
+          console.error('Error loading PCD file:', error);
+        }
+      );
+    };
+
+    // Load both chunks and animate after both are loaded
+    let chunksLoaded = 0;
+    const onChunkLoad = () => {
+      chunksLoaded += 1;
+      if (chunksLoaded === 2) {
         animate();
-      },
-      undefined,
-      (error) => {
-        console.error('Error loading PCD file:', error);
       }
-    );
+    };
+
+    loadPointCloud(`${process.env.PUBLIC_URL}/assets/chunks/infy_campus_v6_chunk_0.pcd`, onChunkLoad);
+    // loadPointCloud(`${process.env.PUBLIC_URL}/assets/chunks/infy_campus_v6_chunk_1.pcd`, onChunkLoad);
+    // loadPointCloud(`${process.env.PUBLIC_URL}/assets/chunks/infy_campus_v6_chunk_2.pcd`, onChunkLoad);
+    // loadPointCloud(`${process.env.PUBLIC_URL}/assets/chunks/infy_campus_v6_chunk_3.pcd`, onChunkLoad);
 
     // Animation loop
     const animate = () => {
