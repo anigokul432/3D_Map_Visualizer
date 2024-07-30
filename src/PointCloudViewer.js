@@ -13,6 +13,7 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
   const [scene, setScene] = useState(null);
   const [camera, setCamera] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [pointClouds, setPointClouds] = useState([]);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -45,8 +46,17 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
 
     // Load PCD files
     const loader = new PCDLoader();
+    const chunks = [];
 
-    const loadPointCloud = (url, onLoad) => {
+    const loadSequentially = (index) => {
+      if (index >= 10) {
+        setPointClouds(chunks);
+        console.log('All chunks loaded and animation started');
+        animate();
+        return;
+      }
+
+      const url = `${process.env.PUBLIC_URL}/assets/chunks/infy_campus_v6_chunk_${index}.pcd`;
       loader.load(
         url,
         (points) => {
@@ -54,8 +64,12 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
           points.rotateX(-1.65);
           points.rotateY(0.125);
           points.translateZ(50);
+          points.visible = false; // Initially make all chunks invisible
+          points.userData.chunkId = index; // Add chunkId to userData
           scene.add(points);
-          onLoad();
+          chunks.push(points);
+          console.log(`Loaded chunk ${index}`);
+          loadSequentially(index + 1); // Load next chunk
         },
         undefined,
         (error) => {
@@ -64,19 +78,8 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
       );
     };
 
-    // Load both chunks and animate after both are loaded
-    let chunksLoaded = 0;
-    const onChunkLoad = () => {
-      chunksLoaded += 1;
-      if (chunksLoaded === 2) {
-        animate();
-      }
-    };
-
-    loadPointCloud(`${process.env.PUBLIC_URL}/assets/chunks/infy_campus_v6_chunk_0.pcd`, onChunkLoad);
-    // loadPointCloud(`${process.env.PUBLIC_URL}/assets/chunks/infy_campus_v6_chunk_1.pcd`, onChunkLoad);
-    // loadPointCloud(`${process.env.PUBLIC_URL}/assets/chunks/infy_campus_v6_chunk_2.pcd`, onChunkLoad);
-    // loadPointCloud(`${process.env.PUBLIC_URL}/assets/chunks/infy_campus_v6_chunk_3.pcd`, onChunkLoad);
+    // Start loading chunks sequentially
+    loadSequentially(0);
 
     // Animation loop
     const animate = () => {
@@ -84,6 +87,7 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
       controls.update();
       renderer.render(scene, camera);
       updateAnnotationsPosition();
+      updateVisibleChunk(); // Update the visible chunk based on camera distance
     };
 
     // Handle window resize
@@ -109,7 +113,7 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
     switch (view) {
       case 'Free':
         camera.fov = 75;
-        camera.position.set(0, 0, 5);
+        camera.position.set(100, 0, 5);
         camera.up.set(0, 1, 0); // Ensure default up direction
         camera.lookAt(0, 0, 0);
         controlsRef.current.enableRotate = true;
@@ -187,6 +191,13 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
     };
   }, [annotations]);
 
+  useEffect(() => {
+    if (pointClouds.length > 0) {
+      console.log('Point clouds updated');
+      updateVisibleChunk();
+    }
+  }, [pointClouds]);
+
   const handleMouseClick = (event) => {
     if (!isAnnotationActive || isEditing || !camera || !scene) return;
 
@@ -199,7 +210,7 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(mouse, camera);
 
-    const points = scene.children.find(child => child.isPoints);
+    const points = scene.children.find(child => child.isPoints && child.visible);
     if (points) {
       const intersect = getClosestPoint(raycaster, points, 0.1); // Increased radius to 0.1
       if (intersect) {
@@ -303,6 +314,33 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
           element.style.display = 'none';
         }
       }
+    });
+  };
+
+  const updateVisibleChunk = () => {
+    if (pointClouds.length === 0) return;
+
+    const cameraPosition = new THREE.Vector3();
+    console.log(cameraPosition)
+    camera.getWorldPosition(cameraPosition);
+
+    let closestChunk = null;
+    let closestDistance = Infinity;
+
+    pointClouds.forEach((chunk) => {
+      const chunkPosition = new THREE.Vector3();
+      chunk.getWorldPosition(chunkPosition);
+      const distance = cameraPosition.distanceTo(chunkPosition);
+
+      if (distance < closestDistance) {
+        closestChunk = chunk;
+        closestDistance = distance;
+      }
+    });
+
+    pointClouds.forEach((chunk) => {
+      chunk.visible = chunk === closestChunk;
+      console.log(`Chunk ${chunk.userData.chunkId} visibility: ${chunk.visible}`);
     });
   };
 

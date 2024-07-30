@@ -9,6 +9,7 @@ function App() {
   const [view, setView] = useState('Free');
   const [isAnnotationActive, setIsAnnotationActive] = useState(false);
   const [annotations, setAnnotations] = useState([]);
+  const [visibleChunk, setVisibleChunk] = useState(0); // State for visible chunk
 
   const handleViewChange = (event) => {
     setView(event.target.value);
@@ -66,6 +67,7 @@ function App() {
             setIsAnnotationActive={setIsAnnotationActive}
             annotations={annotations}
             setAnnotations={setAnnotations}
+            visibleChunk={visibleChunk} // Pass the visibleChunk state
           />
         </div>
       </header>
