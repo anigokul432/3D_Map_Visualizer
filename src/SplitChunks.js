@@ -6,7 +6,7 @@ async function splitPCD() {
   // Initialize PCL
   await PCL.init();
 
-  const inputFilePath = path.join(__dirname, '../public/assets/infy_campus_v6_v2.pcd');
+  const inputFilePath = path.join(__dirname, '../public/assets/infy_campus_v6.pcd');
   const outputDir = path.join(__dirname, '../public/assets/chunks_v2');
 
   if (!fs.existsSync(outputDir)) {
@@ -20,11 +20,11 @@ async function splitPCD() {
   const arrayBuffer = Uint8Array.from(pcdData).buffer;
 
   // Load the PCD data into PCL
-  const cloud = PCL.loadPCDData(arrayBuffer, PCL.PointXYZ);
+  const cloud = PCL.loadPCDData(arrayBuffer, PCL.PointXYZI);
 
   // Get the number of points and determine the chunk size
   const totalPoints = cloud.size;
-  const numChunks = 10;
+  const numChunks = 4;
   const chunkSize = Math.ceil(totalPoints / numChunks);
 
   console.log(`Total points: ${totalPoints}`);
@@ -36,11 +36,11 @@ async function splitPCD() {
     const chunkEnd = Math.min(chunkStart + chunkSize, totalPoints);
 
     // Create a new point cloud for the chunk
-    const chunkCloud = new PCL.PointCloud(PCL.PointXYZ);
+    const chunkCloud = new PCL.PointCloud(PCL.PointXYZI);
 
     console.log(`Creating chunk ${i} with points from ${chunkStart} to ${chunkEnd - 1}`);
 
-    for (let j = chunkStart; j < chunkEnd; j++) {
+    for (let j = chunkStart; j < chunkEnd; j+=50) {
       const point = cloud.points.get(j);
       if (point) {
         // console.log(`Adding point ${j}: (${point.x}, ${point.y}, ${point.z})`);
@@ -53,7 +53,7 @@ async function splitPCD() {
     console.log(`Chunk ${i} size: ${chunkCloud.size}`);
 
     // Compress and save the chunk
-    const compressedData = PCL.savePCDDataBinaryCompressed(chunkCloud);
+    const compressedData = PCL.savePCDDataBinary(chunkCloud);
     const chunkFilePath = path.join(outputDir, `infy_campus_v6_chunk_${i}.pcd`);
     fs.writeFileSync(chunkFilePath, Buffer.from(compressedData));
 

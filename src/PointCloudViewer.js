@@ -1,5 +1,3 @@
-// src/PointCloudViewer.js
-
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { PCDLoader } from 'three/examples/jsm/loaders/PCDLoader';
@@ -13,6 +11,9 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
   const [scene, setScene] = useState(null);
   const [camera, setCamera] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const chunks = useRef([]);
+  const loadedChunks = useRef(new Set());
+  const frustum = new THREE.Frustum();
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -21,7 +22,7 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
     const scene = new THREE.Scene();
     setScene(scene);
     const aspect = mount.clientWidth / mount.clientHeight;
-    const camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 300);
     camera.position.set(0, 0, 5);
     setCamera(camera);
 
@@ -43,40 +44,11 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
     const axesHelper = new THREE.AxesHelper(5); // Size of the axes helper
     scene.add(axesHelper);
 
-    // Load PCD files
-    const loader = new PCDLoader();
-
-    const loadPointCloud = (url, onLoad) => {
-      loader.load(
-        url,
-        (points) => {
-          // Apply the specified transformations to the point cloud
-          points.rotateX(-1.65);
-          points.rotateY(0.125);
-          points.translateZ(50);
-          scene.add(points);
-          onLoad();
-        },
-        undefined,
-        (error) => {
-          console.error('Error loading PCD file:', error);
-        }
-      );
-    };
-
-    // Load both chunks and animate after both are loaded
-    let chunksLoaded = 0;
-    const onChunkLoad = () => {
-      chunksLoaded += 1;
-      if (chunksLoaded === 2) {
-        animate();
-      }
-    };
-
-    loadPointCloud(`${process.env.PUBLIC_URL}/assets/chunks/infy_campus_v6_chunk_0.pcd`, onChunkLoad);
-    // loadPointCloud(`${process.env.PUBLIC_URL}/assets/chunks/infy_campus_v6_chunk_1.pcd`, onChunkLoad);
-    // loadPointCloud(`${process.env.PUBLIC_URL}/assets/chunks/infy_campus_v6_chunk_2.pcd`, onChunkLoad);
-    // loadPointCloud(`${process.env.PUBLIC_URL}/assets/chunks/infy_campus_v6_chunk_3.pcd`, onChunkLoad);
+    // Load initial chunk for demonstration
+    loadChunk(0, scene);
+    loadChunk(1, scene);
+    loadChunk(2, scene);
+    loadChunk(3, scene);
 
     // Animation loop
     const animate = () => {
@@ -85,6 +57,8 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
       renderer.render(scene, camera);
       updateAnnotationsPosition();
     };
+
+    animate(); // Start the animation loop
 
     // Handle window resize
     const handleResize = () => {
@@ -103,6 +77,61 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
     };
   }, []);
 
+  const loadChunk = (index, scene) => {
+    if (loadedChunks.current.has(index)) return;
+
+    const loader = new PCDLoader();
+    loader.load(
+      `${process.env.PUBLIC_URL}/assets/chunks/infy_campus_v6_chunk_${index}.pcd`,
+      (points) => {
+        console.log(`Loaded chunk ${index}`);
+        // Apply the specified transformations to the point cloud
+        points.translateX(-100)
+        points.translateY(30)
+        points.translateZ(200);
+        points.rotateX(-1.65);
+        points.rotateY(0.125);
+
+
+        // Store the chunk with its bounding box
+        const boundingBox = new THREE.Box3().setFromObject(points);
+        chunks.current[index] = { points, boundingBox };
+
+        // Ensure the scene is set before adding the points
+        if (scene) {
+          scene.add(points);
+          loadedChunks.current.add(index);
+          console.log(`Added chunk ${index} to scene`);
+        } else {
+          console.error(`Scene not set for chunk ${index}`);
+        }
+      },
+      undefined,
+      (error) => {
+        console.error(`Error loading PCD file ${index}:`, error);
+      }
+    );
+  };
+
+  const checkChunksInFrustum = () => {
+    if (!scene || !camera) return;
+
+    const cameraMatrix = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    frustum.setFromProjectionMatrix(cameraMatrix);
+
+    for (let i = 0; i < 100; i++) {
+      if (chunks.current[i] && frustum.intersectsBox(chunks.current[i].boundingBox)) {
+        if (!loadedChunks.current.has(i)) {
+          loadChunk(i, scene);
+        }
+      } else if (chunks.current[i] && loadedChunks.current.has(i)) {
+        scene.remove(chunks.current[i].points);
+        loadedChunks.current.delete(i);
+        console.log(`Removed chunk ${i} from scene`);
+      }
+    }
+  };
+
   useEffect(() => {
     const camera = controlsRef.current.object;
 
@@ -110,6 +139,7 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
       case 'Free':
         camera.fov = 75;
         camera.position.set(0, 0, 5);
+        camera.far = 300;
         camera.up.set(0, 1, 0); // Ensure default up direction
         camera.lookAt(0, 0, 0);
         controlsRef.current.enableRotate = true;
@@ -117,8 +147,9 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
         controlsRef.current.enableZoom = true;
         break;
       case 'XY':
-        camera.fov = 1;
-        camera.position.set(0, 0, 200);
+        camera.fov = 5;
+        camera.position.set(0, 0, 1000);
+        camera.far = 5000;
         camera.up.set(0, 1, 0); // Ensure default up direction
         camera.lookAt(0, 0, 0);
         controlsRef.current.enableRotate = false;
@@ -126,8 +157,9 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
         controlsRef.current.enableZoom = true;
         break;
       case 'XZ':
-        camera.fov = 1;
-        camera.position.set(0, 200, 0);
+        camera.fov = 5;
+        camera.position.set(0, 3000, 0);
+        camera.far = 15000;
         camera.up.set(1, 0, 0); // Set up direction to +x
         camera.lookAt(0, 0, 0);
         controlsRef.current.enableRotate = false;
@@ -135,8 +167,9 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
         controlsRef.current.enableZoom = true;
         break;
       case 'YZ':
-        camera.fov = 1;
-        camera.position.set(200, 0, 0);
+        camera.fov = 5;
+        camera.position.set(1000, 0, 0);
+        camera.far = 5000;
         camera.up.set(0, 1, 0); // Ensure default up direction
         camera.lookAt(0, 0, 0);
         controlsRef.current.enableRotate = false;
@@ -199,25 +232,34 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(mouse, camera);
 
-    const points = scene.children.find(child => child.isPoints);
-    if (points) {
-      const intersect = getClosestPoint(raycaster, points, 0.1); // Increased radius to 0.1
-      if (intersect) {
-        console.log('Intersection point:', intersect.point);
+    let closestIntersect = null;
 
-        const annotation = {
-          point: intersect.point,
-          text: '',
-          isEditing: true,
-        };
-
-        setAnnotations((prevAnnotations) => {
-          const newAnnotations = [...prevAnnotations, annotation];
-          setTimeout(() => updateAnnotationsPosition(newAnnotations), 0); // Update positions immediately after state update
-          return newAnnotations;
-        }); // Store annotation
-        setIsEditing(true);
+    // Iterate through all loaded chunks to find the closest intersection
+    loadedChunks.current.forEach((chunkIndex) => {
+      const points = chunks.current[chunkIndex]?.points;
+      if (points) {
+        const intersect = getClosestPoint(raycaster, points, 0.1);
+        if (intersect && (!closestIntersect || intersect.distance < closestIntersect.distance)) {
+          closestIntersect = intersect;
+        }
       }
+    });
+
+    if (closestIntersect) {
+      console.log('Intersection point:', closestIntersect.point);
+
+      const annotation = {
+        point: closestIntersect.point,
+        text: '',
+        isEditing: true,
+      };
+
+      setAnnotations((prevAnnotations) => {
+        const newAnnotations = [...prevAnnotations, annotation];
+        setTimeout(() => updateAnnotationsPosition(newAnnotations), 0); // Update positions immediately after state update
+        return newAnnotations;
+      }); // Store annotation
+      setIsEditing(true);
     }
   };
 
@@ -241,7 +283,7 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
     }
 
     if (closestPoint) {
-      return { point: closestPoint };
+      return { point: closestPoint, distance: closestDistance };
     } else {
       return null;
     }
