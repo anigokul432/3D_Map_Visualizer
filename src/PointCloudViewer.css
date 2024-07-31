@@ -33,3 +33,50 @@
 .annotation p {
   margin: 0; /* Remove default margin */
 }
+
+.poi-icon {
+  position: absolute;
+  transform: translate(-50%, -81%); /* Center the POI icon */
+  font-size: 2em; /* Size of the POI icon */
+}
+
+.poi {
+  position: absolute;
+  width: 150px;
+  background-color: white;
+  border-radius: 5px;
+  box-shadow: 0 0px 8px rgba(0, 0, 0, 0.15); /* Drop shadow */
+  padding: 5px;
+  transform: translate(-50%, -50px); /* Adjust to position bottom-left */
+  overflow: hidden; /* Ensure text is contained within the element */
+}
+
+.poi input,
+.poi textarea,
+.poi p {
+  width: calc(100% - 12px);
+  font-size: 14px; /* Ensure the same font size for input and text */
+  margin-bottom: 5px;
+  word-wrap: break-word; /* Break words that are too long */
+  white-space: pre-wrap; /* Preserve whitespace and wraps long words */
+  resize: none; /* Disable manual resizing */
+  height: auto; /* Ensure it grows based on content */
+  overflow: hidden; /* Hide overflow content */
+}
+
+.poi input {
+  min-height: 20px; /* Minimum height for the input */
+}
+
+.poi textarea {
+  min-height: 40px; /* Minimum height for the textarea */
+}
+
+.poi button {
+  display: block;
+  width: 100%;
+}
+
+.poi p {
+  margin: 0; /* Remove default margin */
+}

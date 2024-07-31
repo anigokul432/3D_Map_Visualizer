@@ -1,24 +1,30 @@
-// src/App.js
-
 import React, { useState } from 'react';
 import './App.css';
 import PointCloudViewer from './PointCloudViewer';
 import AnnotationTool from './AnnotationTool';
+import POITool from './POITool';
 
 function App() {
   const [view, setView] = useState('Free');
   const [isAnnotationActive, setIsAnnotationActive] = useState(false);
+  const [isPOIActive, setIsPOIActive] = useState(false);
   const [annotations, setAnnotations] = useState([]);
+  const [pois, setPOIs] = useState([]);
 
   const handleViewChange = (event) => {
     setView(event.target.value);
     if (event.target.value !== 'Free') {
       setIsAnnotationActive(false); // Deactivate annotation mode if not in Free view
+      setIsPOIActive(false); // Deactivate POI mode if not in Free view
     }
   };
 
   const handleToggleAnnotation = (isActive) => {
     setIsAnnotationActive(isActive);
+  };
+
+  const handleTogglePOI = (isActive) => {
+    setIsPOIActive(isActive);
   };
 
   const handleGenerateReport = () => {
@@ -56,6 +62,11 @@ function App() {
               canActivate={canActivateAnnotation}
               isAnnotationActive={isAnnotationActive}
             />
+            <POITool
+              onTogglePOI={handleTogglePOI}
+              canActivate={canActivateAnnotation}
+              isPOIActive={isPOIActive}
+            />
             <button className="generate-report-button" onClick={handleGenerateReport}>
               Generate Report
             </button>
@@ -63,9 +74,13 @@ function App() {
           <PointCloudViewer
             view={view}
             isAnnotationActive={isAnnotationActive}
+            isPOIActive={isPOIActive}
             setIsAnnotationActive={setIsAnnotationActive}
+            setIsPOIActive={setIsPOIActive}
             annotations={annotations}
             setAnnotations={setAnnotations}
+            pois={pois}
+            setPOIs={setPOIs}
           />
         </div>
       </header>

@@ -2,9 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { PCDLoader } from 'three/examples/jsm/loaders/PCDLoader';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { RiMapPin2Fill } from "react-icons/ri";
 import './PointCloudViewer.css'; // Import the CSS file
 
-const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, annotations, setAnnotations }) => {
+const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, isPOIActive, setIsPOIActive, annotations, setAnnotations, pois, setPOIs }) => {
   const mountRef = useRef(null);
   const controlsRef = useRef(null);
   const [cameraState, setCameraState] = useState(null);
@@ -44,7 +45,7 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
     const axesHelper = new THREE.AxesHelper(5); // Size of the axes helper
     scene.add(axesHelper);
 
-    // Load initial chunk for demonstration
+    // Load initial chunks for demonstration
     loadChunk(0, scene);
     loadChunk(1, scene);
     loadChunk(2, scene);
@@ -56,6 +57,7 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
       controls.update();
       renderer.render(scene, camera);
       updateAnnotationsPosition();
+      updatePOIsPosition();
     };
 
     animate(); // Start the animation loop
@@ -91,7 +93,6 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
         points.translateZ(200);
         points.rotateX(-1.65);
         points.rotateY(0.125);
-
 
         // Store the chunk with its bounding box
         const boundingBox = new THREE.Box3().setFromObject(points);
@@ -185,7 +186,7 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
 
   useEffect(() => {
     const camera = controlsRef.current.object;
-    if (isAnnotationActive) {
+    if (isAnnotationActive || isPOIActive) {
       setCameraState({
         position: camera.position.clone(),
         rotation: camera.rotation.clone(),
@@ -205,11 +206,12 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
       controlsRef.current.enablePan = true;
       controlsRef.current.enableZoom = true;
     }
-  }, [isAnnotationActive]);
+  }, [isAnnotationActive, isPOIActive]);
 
   useEffect(() => {
     const handleUpdate = () => {
       updateAnnotationsPosition();
+      updatePOIsPosition();
     };
 
     // Update annotations position on controls update
@@ -218,10 +220,10 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
     return () => {
       controlsRef.current.removeEventListener('change', handleUpdate);
     };
-  }, [annotations]);
+  }, [annotations, pois]);
 
   const handleMouseClick = (event) => {
-    if (!isAnnotationActive || isEditing || !camera || !scene) return;
+    if ((!isAnnotationActive && !isPOIActive) || isEditing || !camera || !scene) return;
 
     const rect = mountRef.current.getBoundingClientRect();
     const mouse = new THREE.Vector2(
@@ -238,7 +240,7 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
     loadedChunks.current.forEach((chunkIndex) => {
       const points = chunks.current[chunkIndex]?.points;
       if (points) {
-        const intersect = getClosestPoint(raycaster, points, 0.1);
+        const intersect = getClosestPoint(raycaster, points, 0.5);
         if (intersect && (!closestIntersect || intersect.distance < closestIntersect.distance)) {
           closestIntersect = intersect;
         }
@@ -246,20 +248,34 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
     });
 
     if (closestIntersect) {
-      console.log('Intersection point:', closestIntersect.point);
-
-      const annotation = {
-        point: closestIntersect.point,
-        text: '',
-        isEditing: true,
-      };
-
-      setAnnotations((prevAnnotations) => {
-        const newAnnotations = [...prevAnnotations, annotation];
-        setTimeout(() => updateAnnotationsPosition(newAnnotations), 0); // Update positions immediately after state update
-        return newAnnotations;
-      }); // Store annotation
-      setIsEditing(true);
+      if (isAnnotationActive) {
+        console.log('Intersection point:', closestIntersect.point);
+        const annotation = {
+          point: closestIntersect.point,
+          text: '',
+          isEditing: true,
+        };
+        setAnnotations((prevAnnotations) => {
+          const newAnnotations = [...prevAnnotations, annotation];
+          setTimeout(() => updateAnnotationsPosition(newAnnotations), 0); // Update positions immediately after state update
+          return newAnnotations;
+        });
+        setIsEditing(true);
+      } else if (isPOIActive) {
+        console.log('POI point:', closestIntersect.point);
+        const poi = {
+          point: closestIntersect.point,
+          name: '',
+          description: '',
+          isEditing: true,
+        };
+        setPOIs((prevPOIs) => {
+          const newPOIs = [...prevPOIs, poi];
+          setTimeout(() => updatePOIsPosition(newPOIs), 0); // Update positions immediately after state update
+          return newPOIs;
+        });
+        setIsEditing(true);
+      }
     }
   };
 
@@ -320,6 +336,37 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
     );
   };
 
+  const handlePOISave = (index, event) => {
+    event.stopPropagation(); // Stop the event from propagating to the canvas
+    setPOIs((prevPOIs) =>
+      prevPOIs.map((poi, i) =>
+        i === index ? { ...poi, isEditing: false } : poi
+      )
+    );
+    setIsEditing(false);
+    setIsPOIActive(false); // Exit POI mode
+    setTimeout(() => updatePOIsPosition(), 0); // Update positions immediately after state update
+  };
+
+  const handlePOIEdit = (index, event) => {
+    event.stopPropagation(); // Stop the event from propagating to the canvas
+    setPOIs((prevPOIs) =>
+      prevPOIs.map((poi, i) =>
+        i === index ? { ...poi, isEditing: true } : poi
+      )
+    );
+    setIsEditing(true);
+    setTimeout(() => updatePOIsPosition(), 0); // Update positions immediately after state update
+  };
+
+  const handlePOITextChange = (index, key, value) => {
+    setPOIs((prevPOIs) =>
+      prevPOIs.map((poi, i) =>
+        i === index ? { ...poi, [key]: value } : poi
+      )
+    );
+  };
+
   const updateAnnotationsPosition = (annotationsToUpdate = annotations) => {
     annotationsToUpdate.forEach((annotation, index) => {
       const vector = new THREE.Vector3(annotation.point.x, annotation.point.y, annotation.point.z);
@@ -348,8 +395,42 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
     });
   };
 
+  const updatePOIsPosition = (poisToUpdate = pois) => {
+    poisToUpdate.forEach((poi, index) => {
+      const vector = new THREE.Vector3(poi.point.x, poi.point.y, poi.point.z);
+      vector.project(camera);
+
+      const x = (vector.x * 0.5 + 0.5) * mountRef.current.clientWidth;
+      const y = (vector.y * -0.5 + 0.5) * mountRef.current.clientHeight;
+
+      const iconElement = document.getElementById(`poi-icon-${index}`);
+      const boxElement = document.getElementById(`poi-${index}`);
+      if (iconElement && boxElement) {
+        const height = boxElement.getBoundingClientRect().height;
+        if (view !== 'Free') {
+          iconElement.style.display = 'none';
+          boxElement.style.display = 'none';
+        } else if (
+          vector.x >= -1 && vector.x <= 1 &&
+          vector.y >= -1 && vector.y <= 1 &&
+          vector.z >= -1 && vector.z <= 1
+        ) {
+          iconElement.style.display = 'block';
+          boxElement.style.display = 'block';
+          iconElement.style.left = `${x}px`; // Center the POI icon
+          iconElement.style.top = `${y}px`; // Center the POI icon
+          boxElement.style.left = `${x}px`; // Adjust to position bottom-left
+          boxElement.style.top = `${y - height}px`;  // Adjust to position bottom-left based on height
+        } else {
+          iconElement.style.display = 'none';
+          boxElement.style.display = 'none';
+        }
+      }
+    });
+  };
+
   useEffect(() => {
-    if (isAnnotationActive) {
+    if (isAnnotationActive || isPOIActive) {
       mountRef.current.addEventListener('click', handleMouseClick);
     } else {
       mountRef.current.removeEventListener('click', handleMouseClick);
@@ -358,7 +439,7 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
     return () => {
       mountRef.current.removeEventListener('click', handleMouseClick);
     };
-  }, [isAnnotationActive, isEditing, annotations]);
+  }, [isAnnotationActive, isPOIActive, isEditing, annotations, pois]);
 
   return (
     <div ref={mountRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -383,6 +464,42 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, ann
             </>
           )}
         </div>
+      ))}
+      {view === 'Free' && pois.map((poi, index) => (
+        <React.Fragment key={index}>
+          <div
+            id={`poi-icon-${index}`}
+            className="poi-icon"
+          >
+            <RiMapPin2Fill color="red" />
+          </div>
+          <div
+            id={`poi-${index}`}
+            className="poi"
+          >
+            {poi.isEditing ? (
+              <>
+                  <input
+                    value={poi.name}
+                    onChange={(e) => handlePOITextChange(index, 'name', e.target.value)}
+                    placeholder="Name"
+                  />
+                  <textarea
+                    value={poi.description}
+                    onChange={(e) => handlePOITextChange(index, 'description', e.target.value)}
+                    placeholder="Description"
+                  />
+                  <button onClick={(e) => handlePOISave(index, e)}>Save</button>
+              </>
+            ) : (
+              <>
+                <p><strong>{poi.name}</strong></p>
+                <p>{poi.description}</p>
+                <button onClick={(e) => handlePOIEdit(index, e)}>Edit</button>
+              </>
+            )}
+          </div>
+        </React.Fragment>
       ))}
     </div>
   );
