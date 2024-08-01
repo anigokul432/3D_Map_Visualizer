@@ -1,3 +1,5 @@
+/* src/PointCloudViewer.css */
+
 .annotation {
   position: absolute;
   width: 100px;
@@ -65,6 +67,7 @@
 }
 
 .poi input {
+  margin-top: 20px;
   min-height: 20px; /* Minimum height for the input */
 }
 
@@ -79,4 +82,25 @@
 
 .poi p {
   margin: 0; /* Remove default margin */
+}
+
+.poi-close {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  cursor: pointer;
+}
+
+.add-point-button {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  font-size: 0.8em;
+  padding: 5px 10px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all 0.3s ease;
 }

@@ -1,13 +1,17 @@
+// src/App.js
+
 import React, { useState } from 'react';
 import './App.css';
 import PointCloudViewer from './PointCloudViewer';
 import AnnotationTool from './AnnotationTool';
 import POITool from './POITool';
+import PathCreationTool from './PathCreationTool';
 
 function App() {
   const [view, setView] = useState('Free');
   const [isAnnotationActive, setIsAnnotationActive] = useState(false);
   const [isPOIActive, setIsPOIActive] = useState(false);
+  const [isPathCreationActive, setIsPathCreationActive] = useState(false);
   const [annotations, setAnnotations] = useState([]);
   const [pois, setPOIs] = useState([]);
 
@@ -16,6 +20,7 @@ function App() {
     if (event.target.value !== 'Free') {
       setIsAnnotationActive(false); // Deactivate annotation mode if not in Free view
       setIsPOIActive(false); // Deactivate POI mode if not in Free view
+      setIsPathCreationActive(false); // Deactivate path creation mode if not in Free view
     }
   };
 
@@ -25,6 +30,10 @@ function App() {
 
   const handleTogglePOI = (isActive) => {
     setIsPOIActive(isActive);
+  };
+
+  const handleTogglePathCreation = (isActive) => {
+    setIsPathCreationActive(isActive);
   };
 
   const handleGenerateReport = () => {
@@ -42,7 +51,7 @@ function App() {
     link.click();
   };
 
-  const canActivateAnnotation = view === 'Free';
+  const canActivateTools = view === 'Free';
 
   return (
     <div className="App">
@@ -59,13 +68,18 @@ function App() {
             </select>
             <AnnotationTool
               onToggleAnnotation={handleToggleAnnotation}
-              canActivate={canActivateAnnotation}
+              canActivate={canActivateTools}
               isAnnotationActive={isAnnotationActive}
             />
             <POITool
               onTogglePOI={handleTogglePOI}
-              canActivate={canActivateAnnotation}
+              canActivate={canActivateTools}
               isPOIActive={isPOIActive}
+            />
+            <PathCreationTool
+              onTogglePathCreation={handleTogglePathCreation}
+              canActivate={canActivateTools}
+              isPathCreationActive={isPathCreationActive}
             />
             <button className="generate-report-button" onClick={handleGenerateReport}>
               Generate Report
@@ -75,8 +89,10 @@ function App() {
             view={view}
             isAnnotationActive={isAnnotationActive}
             isPOIActive={isPOIActive}
+            isPathCreationActive={isPathCreationActive}
             setIsAnnotationActive={setIsAnnotationActive}
             setIsPOIActive={setIsPOIActive}
+            setIsPathCreationActive={setIsPathCreationActive}
             annotations={annotations}
             setAnnotations={setAnnotations}
             pois={pois}
