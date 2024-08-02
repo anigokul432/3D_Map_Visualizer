@@ -1,19 +1,38 @@
-// src/PointCloudViewer.js
-
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { PCDLoader } from 'three/examples/jsm/loaders/PCDLoader';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { RiMapPin2Fill, RiCloseLine } from "react-icons/ri";
+import Path from './Path'; // Import Path object
 import './PointCloudViewer.css'; // Import the CSS file
 
-const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, isPOIActive, setIsPOIActive, isPathCreationActive, setIsPathCreationActive, annotations, setAnnotations, pois, setPOIs }) => {
+const PointCloudViewer = ({
+  view,
+  isAnnotationActive,
+  setIsAnnotationActive,
+  isPOIActive,
+  setIsPOIActive,
+  isPathActive,
+  isAddingPoint,
+  setIsPathActive,
+  setIsAddingPoint,
+  annotations,
+  setAnnotations,
+  pois,
+  setPOIs,
+  paths,
+  setPaths
+}) => {
   const mountRef = useRef(null);
   const controlsRef = useRef(null);
   const [cameraState, setCameraState] = useState(null);
   const [scene, setScene] = useState(null);
   const [camera, setCamera] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [pathPoints, setPathPoints] = useState([]);
+  const [showPathDialog, setShowPathDialog] = useState(false);
+  const [pathName, setPathName] = useState('');
+  const [pathDescription, setPathDescription] = useState('');
   const chunks = useRef([]);
   const loadedChunks = useRef(new Set());
   const frustum = new THREE.Frustum();
@@ -188,7 +207,7 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, isP
 
   useEffect(() => {
     const camera = controlsRef.current.object;
-    if (isAnnotationActive || isPOIActive || isPathCreationActive) {
+    if (isAnnotationActive || isPOIActive || isAddingPoint) {
       setCameraState({
         position: camera.position.clone(),
         rotation: camera.rotation.clone(),
@@ -208,7 +227,7 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, isP
       controlsRef.current.enablePan = true;
       controlsRef.current.enableZoom = true;
     }
-  }, [isAnnotationActive, isPOIActive, isPathCreationActive]);
+  }, [isAnnotationActive, isPOIActive, isAddingPoint]);
 
   useEffect(() => {
     const handleUpdate = () => {
@@ -225,7 +244,7 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, isP
   }, [annotations, pois]);
 
   const handleMouseClick = (event) => {
-    if ((!isAnnotationActive && !isPOIActive && !isPathCreationActive) || isEditing || !camera || !scene) return;
+    if ((!isAnnotationActive && !isPOIActive && !isAddingPoint) || isEditing || !camera || !scene) return;
 
     const rect = mountRef.current.getBoundingClientRect();
     const mouse = new THREE.Vector2(
@@ -278,10 +297,16 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, isP
           return newPOIs;
         });
         setIsEditing(true);
-      } else if (isPathCreationActive) {
-        // Handle path creation point addition here
+      } else if (isAddingPoint) {
         console.log('Path point:', closestIntersect.point);
-        // Add your path creation logic here
+        setPathPoints((prevPoints) => [...prevPoints, closestIntersect.point]);
+
+        // Create a red sphere for the path point
+        const sphereGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+        const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+        sphere.position.copy(closestIntersect.point);
+        scene.add(sphere);
       }
     }
   };
@@ -392,6 +417,28 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, isP
     );
   };
 
+  const handleSavePath = () => {
+    const newPath = new Path(pathName, pathDescription, pathPoints);
+    console.log(newPath);
+    setPaths((prevPaths) => [...prevPaths, newPath]);
+    setShowPathDialog(false);
+    setPathPoints([]);
+    setPathName('');
+    setPathDescription('');
+    setIsAddingPoint(false);
+    setIsPathActive(false);
+  
+    // Create a spline curve from the path points
+    if (pathPoints.length > 1) {
+      const curve = new THREE.CatmullRomCurve3(pathPoints);
+      const tubeGeometry = new THREE.TubeGeometry(curve, 50, 0.2, 8, false); // Radius of 0.2 for thicker tube
+      const tubeMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      const tube = new THREE.Mesh(tubeGeometry, tubeMaterial);
+      scene.add(tube);
+    }
+  };
+  
+
   const updateAnnotationsPosition = (annotationsToUpdate = annotations) => {
     annotationsToUpdate.forEach((annotation, index) => {
       const vector = new THREE.Vector3(annotation.point.x, annotation.point.y, annotation.point.z);
@@ -455,7 +502,7 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, isP
   };
 
   useEffect(() => {
-    if (isAnnotationActive || isPOIActive || isPathCreationActive) {
+    if (isAnnotationActive || isPOIActive || isAddingPoint) {
       mountRef.current.addEventListener('click', handleMouseClick);
     } else {
       mountRef.current.removeEventListener('click', handleMouseClick);
@@ -464,7 +511,7 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, isP
     return () => {
       mountRef.current.removeEventListener('click', handleMouseClick);
     };
-  }, [isAnnotationActive, isPOIActive, isPathCreationActive, isEditing, annotations, pois]);
+  }, [isAnnotationActive, isPOIActive, isAddingPoint, isEditing, annotations, pois]);
 
   return (
     <div ref={mountRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -531,10 +578,23 @@ const PointCloudViewer = ({ view, isAnnotationActive, setIsAnnotationActive, isP
           </div>
         </React.Fragment>
       ))}
-      {isPathCreationActive && (
-        <button className="add-point-button">
-          Add Point
-        </button>
+      {view === 'Free' && isPathActive && !isAddingPoint && (
+        <>
+          <div className="path-dialog" onClick={(e) => e.stopPropagation()}>
+            <input
+              type="text"
+              placeholder="Path Name"
+              value={pathName}
+              onChange={(e) => setPathName(e.target.value)}
+            />
+            <textarea
+              placeholder="Path Description"
+              value={pathDescription}
+              onChange={(e) => setPathDescription(e.target.value)}
+            />
+            <button onClick={handleSavePath}>Save Path</button>
+          </div>
+        </>
       )}
     </div>
   );
